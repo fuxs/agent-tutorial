@@ -1,4 +1,4 @@
-# First tutorial
+# Agent development with ADK
 
 ## Select a project
 
@@ -6,76 +6,123 @@
 
 ## Open the Cloud Shell
 
-We will use the Cloud Shell in this tutorial.
+We will use the Cloud Shell in this tutorial. Please click on the button if it
+is not already open.
 
 <walkthrough-open-cloud-shell-button></walkthrough-open-cloud-shell-button>
 
-### Install uv
+### Activate APIs
+
+We have to activate some APIs once, before we can run our examples.
+
+* Vertex AI API
+* Cloud Run Admin API
+
+Please copy the following snippet to the Cloud Shell and execute it.
+
+<walkthrough-enable-apis apis="aiplatform.googleapis.com,run.googleapis.com"></walkthrough-enable-apis>
+
+## Python Packet Management
 
 We use `uv` for Python packet and project management.
 
-Copy the following line and execute it in the Cloud Shell.
+Please copy the following snippet to the Cloud Shell and execute it.
 
-
-```shell
+```sh
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### Co
-
-```
-agents
-├── .venv
-│   ├── bin
-│   ├── lib
-│   └── pyvenv.cfg
-├── .python-version
-├── README.md
-├── main.py
-├── pyproject.toml
-└── uv.lock
-```
+Activate the `uv` command with the following command.
 
 ```sh
-uv init agents &&
-cd agents &&
-uv venv &&
-uv add google-adk &&
-mkdir -p daisy &&
-touch daisy/{agent.py,tools.py} &&
+source $HOME/.local/bin/env
+```
+
+Run `uv sync` to install all required packages. These are the following:
+
+* google-adk
+* google-genai 
+
+```sh
+uv sync
+```
+
+Activate the current virtual Python environment.
+
+```sh
+source .venv/bin/activate
+```
+
+## Configuration
+
+The examples require some information to execute. We provide a GCP project-id,
+the location and we want to use Vertex AI.
+
+```shell
 cat <<EOF > .env
 GOOGLE_CLOUD_PROJECT="<walkthrough-project-name/>"
 GOOGLE_CLOUD_LOCATION="us-central1"
 GOOGLE_GENAI_USE_VERTEXAI="True"
 EOF
-cat <<EOF > daisy/__init__.py
-from . import agent
-EOF
-if [ -x "$(command -v cloudshell)" ]; then
-  cloudshell ws .
-fi
+````
+
+## First Agent
+
+Now you will develop your first agent. A minimal setup requires two files in a
+separate directory:
+
+```text
+first_agent
+├── __init__.py
+└── agent.py
 ```
 
-Open the file 
-<walkthrough-editor-open-file filePath="agents/daisy/agent.py">agent.py</walkthrough-editor-open-file>
-and paste the following code:
-```py
-from google.adk.agents.llm_agent import LlmAgent
+The file <walkthrough-editor-open-file filePath="first_agent/__init__.py">first_agent/__init__.py</walkthrough-editor-open-file> is needed to treat this directory as a module.
+
+Open the file <walkthrough-editor-open-file filePath="first_agent/agent.py">first_agent/agent.py</walkthrough-editor-open-file>
+and paste the following Python code:
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.tools import google_search
+
+INSTRUCTION = """Your name is Bob and you are an expert for mobile phones. Use
+            the Google search tool whenever you need actual data."""
 
 root_agent = LlmAgent(
-    model="gemini-2.0-flash",
-    name="daisy_agent",
-    instruction="You name is Daisy and you are an expert for flowers.",
+    model="gemini-2.0-flash-exp",
+    name="first_agent",
+    description="An expert for all kind of mobile phones.",
+    instruction=INSTRUCTION,
+    tools=[google_search],
 )
 ```
 
-```sh
-uv run adk run daisy
-```
+Now you can execute the client in the CLI with the following command.
 
 ```sh
-uv run adk web --port 8080
+adk run first_agent
 ```
+
+Ask the following question:
+
+>*How can you help me?*
+
+Press Control-D to exit the agent.
+
+The selected model supports multi-modal conversations with audio and video.
+Therefore you have to start the agent in the web-server:
+
+```sh
+adk web --port 8080
+```
+
+Open the agent in the web preview by pushing the following button: <walkthrough-web-preview-icon></walkthrough-web-preview-icon>
+
+Select first_agent in the drop-down list in the left top corner.
+
+## Deploy on Cloud Run
+
 
 ```sh
 uv run adk deploy cloud_run \
@@ -85,6 +132,12 @@ uv run adk deploy cloud_run \
 --with_ui \
 daisy/
 ```
+
+When called for the first time, you will bes asked to create an Artifact
+Registry Docker repository. Please confirm the creation of a new repository with
+`Y` when you are asked.
+
+Do not allow unauthenticated invocations to our `daisy-agent-service` with `N`.
 
 ```sh
 gcloud run services proxy daisy-agent-service \
@@ -151,22 +204,27 @@ ENTRYPOINT ["ollama", "serve"]
 EOF
 ```
 
+
 ```sh
 gcloud run deploy ollama-gemma \
-  --project=<walkthrough-project-id/> \
+  --project=<walkthrough-project-id/>  \
   --region=us-central1 \
-  --source Dockerfile \
-  --concurrency 4 \ 
-  --cpu 8 \
-  --set-env-vars OLLAMA_NUM_PARALLEL=4 \
-  --gpu 1 \
-  --gpu-type nvidia-l4 \
-  --max-instances 1 \
-  --memory 32Gi \
+  --source=. \
+  --concurrency=4 \
+  --cpu=8 \
+  --set-env-vars=OLLAMA_NUM_PARALLEL=4 \
+  --gpu=1 \
+  --gpu-type=nvidia-l4 \
+  --max-instances=1 \
+  --memory=32Gi \
   --no-allow-unauthenticated \
   --no-cpu-throttling \
   --no-gpu-zonal-redundancy \
   --timeout=600
+```
+
+```sh
+gcloud run services proxy ollama-gemma --port=9090
 ```
 
 ## Third step
