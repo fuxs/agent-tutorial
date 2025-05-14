@@ -1,26 +1,28 @@
 # Agent development with ADK
 
-## Select a project
+## Select a GCP project
 
 <walkthrough-project-setup></walkthrough-project-setup>
 
-## Open the Cloud Shell
+### Open the code in the Editor
 
-We will use the Cloud Shell in this tutorial. Please click on the button if it
-is not already open.
+Execute the following command to open the code in the editor:
 
-<walkthrough-open-cloud-shell-button></walkthrough-open-cloud-shell-button>
+```sh
+cloudshell ws .
+```
 
 ### Activate APIs
 
-We have to activate some APIs once, before we can run our examples.
+You have to activate some APIs once, before you can run our examples.
 
 * Vertex AI API
 * Cloud Run Admin API
 
 Please copy the following snippet to the Cloud Shell and execute it.
 
-<walkthrough-enable-apis apis="aiplatform.googleapis.com,run.googleapis.com"></walkthrough-enable-apis>
+<walkthrough-enable-apis
+apis="aiplatform.googleapis.com,run.googleapis.com"></walkthrough-enable-apis>
 
 ## Python Packet Management
 
@@ -41,7 +43,7 @@ source $HOME/.local/bin/env
 Run `uv sync` to install all required packages. These are the following:
 
 * google-adk
-* google-genai 
+* google-genai
 
 ```sh
 uv sync
@@ -56,7 +58,8 @@ source .venv/bin/activate
 ## Configuration
 
 The examples require some information to execute. We provide a GCP project-id,
-the location and we want to use Vertex AI.
+the location and we want to use Vertex AI. Copy the following command to the
+Cloud Shell and execute it.
 
 ```shell
 cat <<EOF > .env
@@ -64,7 +67,12 @@ GOOGLE_CLOUD_PROJECT="<walkthrough-project-name/>"
 GOOGLE_CLOUD_LOCATION="us-central1"
 GOOGLE_GENAI_USE_VERTEXAI="True"
 EOF
-````
+```
+
+Open the file in the editor with the following button:
+
+<walkthrough-editor-open-file filePath=".env">Open
+.env</walkthrough-editor-open-file>
 
 ## First Agent
 
@@ -123,7 +131,6 @@ Select first_agent in the drop-down list in the left top corner.
 
 ## Deploy on Cloud Run
 
-
 ```sh
 uv run adk deploy cloud_run \
 --project=<walkthrough-project-id/> \
@@ -149,6 +156,7 @@ gcloud run services proxy daisy-agent-service \
 ```sh
 gcloud config set project <walkthrough-project-id/>
 ```
+
 ```sh
 TOKEN=$(gcloud auth print-identity-token)
 APP_URL=$(gcloud run services list --format="value(status.address.url)" --filter="metadata.name=daisy-agent-service")
@@ -203,7 +211,6 @@ RUN ollama serve & sleep 5 && ollama pull $MODEL
 ENTRYPOINT ["ollama", "serve"]
 EOF
 ```
-
 
 ```sh
 gcloud run deploy ollama-gemma \
