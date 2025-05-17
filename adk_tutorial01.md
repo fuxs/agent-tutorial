@@ -6,11 +6,16 @@
 
 ### Open the code in the Editor
 
-Execute the following command to open the code in the editor:
+Execute the following command in your Cloud Shell
+<walkthrough-cloud-shell-icon></walkthrough-cloud-shell-icon> to open the code
+in the editor:
 
 ```sh
 cloudshell ws .
 ```
+
+__Tip__: Click the copy button on the side of the code box to paste the command
+in the Cloud Shell terminal to run it.
 
 ### Activate APIs
 
@@ -50,6 +55,9 @@ Run `uv sync` to install all required packages. These are the following:
 uv sync
 ```
 
+The editor will recognize a new Python environment, please confirm the selection
+with *Yes*.
+
 Activate the current virtual Python environment.
 
 ```sh
@@ -59,8 +67,12 @@ source .venv/bin/activate
 ## Configuration
 
 The examples require some information to execute. We provide a GCP project-id,
-the location and we want to use Vertex AI. Copy the following command to the
-Cloud Shell and execute it.
+the location and we want to use Vertex AI. Open the file in the editor with the following button:
+
+<walkthrough-editor-open-file filePath=".env">Open
+.env</walkthrough-editor-open-file>
+
+and copy the following configuration:
 
 ```shell
 cat <<EOF > .env
@@ -69,11 +81,6 @@ GOOGLE_CLOUD_LOCATION="us-central1"
 GOOGLE_GENAI_USE_VERTEXAI="True"
 EOF
 ```
-
-Open the file in the editor with the following button:
-
-<walkthrough-editor-open-file filePath=".env">Open
-.env</walkthrough-editor-open-file>
 
 ## First agent
 
@@ -84,6 +91,12 @@ separate directory:
 first_agent
 ├── __init__.py
 └── agent.py
+```
+
+The following script will create these files for you:
+
+```sh
+. init_agent.sh first_agent
 ```
 
 The file <walkthrough-editor-open-file filePath="first_agent/__init__.py">first_agent/__init__.py</walkthrough-editor-open-file> is needed to treat this directory as a module.
@@ -105,9 +118,10 @@ root_agent = LlmAgent(
     instruction=INSTRUCTION,
     tools=[google_search],
 )
+
 ```
 
-## Run the agent
+## Run the first agent
 
 Now you can execute the agent in the CLI with the following command.
 
@@ -118,6 +132,8 @@ adk run first_agent
 Ask the following question:
 
 >*How can you help me?*
+>
+>*Which is the latest phone from Google?*
 
 Press Control-D to exit the agent.
 
@@ -130,7 +146,7 @@ adk web --port 8080
 
 Open the agent in the web preview by pushing the following button: <walkthrough-web-preview-icon></walkthrough-web-preview-icon>
 
-Select first_agent in the drop-down list in the left top corner.
+Select __first_agent__ in the drop-down list in the left top corner.
 
 ## FastAPI server
 
@@ -143,7 +159,7 @@ adk api_server
 
 First, you have to initialize a session for a user. Take a closer look at the
 URL. It references a user id `user_123` with a session id `session_abc` for the
-app `first_agent`.
+app `first_agent`. Open a new terminal and execute the following command:
 
 ```sh
 curl -X POST http://0.0.0.0:8000/apps/first_agent/users/user_123/sessions/session_abc \
@@ -163,20 +179,92 @@ curl -X POST http://0.0.0.0:8000/run_sse \
     "new_message": {
         "role": "user",
         "parts": [{
-        "text": "Which is the latest phone from google?"
+        "text": "Which is the latest phone from Google?"
         }]
     },
     "streaming": false
     }'
 ```
 
-## MCP
+## Tools in agents
+
+Agents can use tools to fulfill their tasks, e.g. the first agent already uses
+the Google Search for actual data. You can define your own tool functions. In
+this example we will use Imagen 3 for image generation.
+
+Create a new agent directory structure with the following command:
+
+```sh
+. init_agent.sh image_agent
+```
+
+Open the file <walkthrough-editor-open-file filePath="image_agent/agent.py">image_agent/agent.py</walkthrough-editor-open-file> and paste the following Python code:
+
+```python
+from google.genai import Client
+from google.genai import types
+
+from google.adk import Agent
+from google.adk.tools import load_artifacts
+from google.adk.tools import ToolContext
+
+client = Client()
+
+
+def generate_image(prompt: str, tool_context: "ToolContext"):
+    """Generates an image based on the prompt."""
+    response = client.models.generate_images(
+        model="imagen-3.0-generate-002",
+        prompt=prompt,
+        config={"number_of_images": 1},
+    )
+    if not response.generated_images:
+        return {"status": "failed"}
+    image_bytes = response.generated_images[0].image.image_bytes
+    tool_context.save_artifact(
+        "image.png",
+        types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
+    )
+    return {
+        "status": "success",
+        "detail": "Image generated successfully and stored in artifacts.",
+        "filename": "image.png",
+    }
+
+
+root_agent = Agent(
+    model="gemini-2.0-flash-001",
+    name="image_agent",
+    description="An agent that generates images and answer questions about the images.",
+    instruction="You are an agent whose job is to generate or edit an image based on the user's prompt.",
+    tools=[generate_image, load_artifacts],
+)
+
+```
+
+## Run the image agent
+
+Now you can execute the agent in the CLI with the following command.
+
+```sh
+adk web
+```
+
+Ask the following question:
+
+>*How can you help me?*
+>
+>*Draw a portrait of a red point siamese wearing a cape*
+
+Press Control-C to exit the agent.
+
+## External tools with MCP
 
 The Model Context Protocol MCP is an open protocol that standardizes how
 applications provide context to LLMs
 ([Introduction](https://modelcontextprotocol.io/introduction)).
 
-You will create a MCP server and an agent connecting to it.
+You will create a MCP server and an agent using it as tool.
 
 ### MCP Server
 
@@ -220,16 +308,19 @@ if __name__ == "__main__":
 
 ```
 
-The folder contains 2 other files:
+The folder contains 2 other files, no changes are required:
 
 * <walkthrough-editor-open-file filePath="mcp_server/Procfile">mcp_server/Procfile</walkthrough-editor-open-file> used by Cloud Run to run the web server
 * <walkthrough-editor-open-file filePath="mcp_server/requirements.txt">mcp_server/requirements.txt</walkthrough-editor-open-file> the Python dependencies
+
+You use Cloud Run to serve your new MCP service.
 
 ```sh
 gcloud run deploy mcp-server \
 --project=<walkthrough-project-id/> \
 --source mcp_server \
 --region us-central1 \
+--base-image python312 \
 --allow-unauthenticated
 ```
 
@@ -237,7 +328,14 @@ It takes some time to build and deploy the container image.
 
 ## MCP agent
 
-Copy the following code to <walkthrough-editor-open-file filePath="mcp_server/server.py">mcp_server/server.py</walkthrough-editor-open-file>.
+Create a new agent directory structure with the following command:
+
+```sh
+. init_agent.sh calc_agent
+```
+
+
+Copy the following code to <walkthrough-editor-open-file filePath="calc_agent/agent.py">calc_agent/agent.py</walkthrough-editor-open-file>.
 
 ```python
 from google.adk.agents import Agent
@@ -253,7 +351,7 @@ async def create_agent():
         ),
     )
     agent = Agent(
-        name="calculator",
+        name="calc_agent",
         model="gemini-2.0-flash",
         instruction="""You are a helpful AI assistant designed
           to provide accurate and useful information.""",
@@ -278,11 +376,17 @@ gcloud run services describe mcp-server \
 
 Copy the number and replace the value in the line `NAMESPACE="000000000000"`
 
+## Run the calculator agent
+
 Now you can execute the agent in the CLI with the following command.
 
 ```sh
-adk run calculator
+adk web
 ```
+
+Open the agent in the web preview by pushing the following button: <walkthrough-web-preview-icon></walkthrough-web-preview-icon>
+
+Select __calc_agent__ in the drop-down list in the left top corner.
 
 Ask the following questions:
 
@@ -290,9 +394,9 @@ Ask the following questions:
 >
 >*Add 100 to 200*
 >
->*Subtract 50 and divide by 5*
+>*Subtract 50 from the result and divide by 5*
 
-Press Control-D to exit the agent.
+Press Control-C to exit the agent.
 
 Optional: stop and delete the MCP server with the following command
 
@@ -302,8 +406,6 @@ gcloud run services delete mcp-server \
 --region=us-central1 \
 --quiet
 ```
-
-
 
 ## Deploy on Cloud Run
 
