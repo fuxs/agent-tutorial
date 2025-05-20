@@ -67,12 +67,7 @@ source .venv/bin/activate
 ## Configuration
 
 The examples require some information to execute. We provide a GCP project-id,
-the location and we want to use Vertex AI. Open the file in the editor with the following button:
-
-<walkthrough-editor-open-file filePath=".env">Open
-.env</walkthrough-editor-open-file>
-
-and copy the following configuration:
+the location and we want to use Vertex AI. Execute the following command:
 
 ```shell
 cat <<EOF > .env
@@ -81,6 +76,9 @@ GOOGLE_CLOUD_LOCATION="us-central1"
 GOOGLE_GENAI_USE_VERTEXAI="True"
 EOF
 ```
+
+You can open the file with this button: <walkthrough-editor-open-file filePath=".env">Open
+.env</walkthrough-editor-open-file>
 
 ## First agent
 
@@ -144,9 +142,19 @@ Therefore you have to start the agent in the web-server:
 adk web --port 8080
 ```
 
-Open the agent in the web preview by pushing the following button: <walkthrough-web-preview-icon></walkthrough-web-preview-icon>
+Open the agent in the web preview by pushing the preview button: <walkthrough-web-preview-icon></walkthrough-web-preview-icon>
 
 Select __first_agent__ in the drop-down list in the left top corner.
+
+Activate your camera and ask a question with your voice.
+
+>*Can you see me?*
+>
+>*How many fingers do I hold up?*
+
+You should hear a response from the agent.
+
+Press Control-C to exit the web server.
 
 ## FastAPI server
 
@@ -211,7 +219,7 @@ from google.adk.tools import ToolContext
 client = Client()
 
 
-def generate_image(prompt: str, tool_context: "ToolContext"):
+async def generate_image(prompt: str, tool_context: "ToolContext"):
     """Generates an image based on the prompt."""
     response = client.models.generate_images(
         model="imagen-3.0-generate-002",
@@ -221,7 +229,7 @@ def generate_image(prompt: str, tool_context: "ToolContext"):
     if not response.generated_images:
         return {"status": "failed"}
     image_bytes = response.generated_images[0].image.image_bytes
-    tool_context.save_artifact(
+    await tool_context.save_artifact(
         "image.png",
         types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
     )
@@ -247,8 +255,12 @@ root_agent = Agent(
 Now you can execute the agent in the CLI with the following command.
 
 ```sh
-adk web
+adk web --port 8080
 ```
+
+Open the agent in the web preview by pushing the preview button: <walkthrough-web-preview-icon></walkthrough-web-preview-icon>
+
+Select __image_agent__ in the drop-down list in the left top corner.
 
 Ask the following question:
 
@@ -256,7 +268,7 @@ Ask the following question:
 >
 >*Draw a portrait of a red point siamese wearing a cape*
 
-Press Control-C to exit the agent.
+Press Control-C to exit the web server.
 
 ## External tools with MCP
 
@@ -274,7 +286,6 @@ and paste the following Python code:
 
 ```python
 from fastmcp import FastMCP
-import asyncio
 
 mcp = FastMCP("Calculator Server")
 
@@ -301,10 +312,6 @@ def multiply(a: int, b: int) -> int:
 def divide(a: int, b: int) -> int:
     """Divide parameter a by b"""
     return a / b
-
-
-if __name__ == "__main__":
-    asyncio.run(mcp.run_sse_async(host="0.0.0.0", port=8080))
 
 ```
 
@@ -347,7 +354,7 @@ NAMESPACE="000000000000"
 async def create_agent():
     tools, exit_stack = await MCPToolset.from_server(
         connection_params=SseServerParams(
-            url=f"https://mcp-server-{NAMESPACE}.us-central1.run.app:8080/sse",
+            url=f"https://mcp-server-{NAMESPACE}.us-central1.run.app/sse",
         ),
     )
     agent = Agent(
@@ -381,10 +388,10 @@ Copy the number and replace the value in the line `NAMESPACE="000000000000"`
 Now you can execute the agent in the CLI with the following command.
 
 ```sh
-adk web
+adk web --port 8080
 ```
 
-Open the agent in the web preview by pushing the following button: <walkthrough-web-preview-icon></walkthrough-web-preview-icon>
+Open the agent in the web preview by pushing the preview button: <walkthrough-web-preview-icon></walkthrough-web-preview-icon>
 
 Select __calc_agent__ in the drop-down list in the left top corner.
 
@@ -396,7 +403,7 @@ Ask the following questions:
 >
 >*Subtract 50 from the result and divide by 5*
 
-Press Control-C to exit the agent.
+Press Control-C to exit the web server.
 
 Optional: stop and delete the MCP server with the following command
 
