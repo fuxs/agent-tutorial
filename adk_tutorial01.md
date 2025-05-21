@@ -286,6 +286,7 @@ and paste the following Python code:
 
 ```python
 from fastmcp import FastMCP
+import asyncio
 
 mcp = FastMCP("Calculator Server")
 
@@ -313,6 +314,9 @@ def divide(a: int, b: int) -> int:
     """Divide parameter a by b"""
     return a / b
 
+
+if __name__ == "__main__":
+    asyncio.run(mcp.run_sse_async(host="0.0.0.0", port=8080))
 ```
 
 The folder contains 2 other files, no changes are required:
@@ -413,114 +417,3 @@ gcloud run services delete mcp-server \
 --region=us-central1 \
 --quiet
 ```
-
-## Deploy on Cloud Run
-
-```sh
-uv run adk deploy cloud_run \
---project=<walkthrough-project-id/> \
---region=us-central1 \
---service_name=daisy-agent-service \
---with_ui \
-daisy/
-```
-
-When called for the first time, you will bes asked to create an Artifact
-Registry Docker repository. Please confirm the creation of a new repository with
-`Y` when you are asked.
-
-Do not allow unauthenticated invocations to our `daisy-agent-service` with `N`.
-
-```sh
-gcloud run services proxy daisy-agent-service \
---project=<walkthrough-project-id/> \
---region=us-central1 \
---port 8080
-```
-
-```sh
-gcloud config set project <walkthrough-project-id/>
-```
-
-```sh
-TOKEN=$(gcloud auth print-identity-token)
-APP_URL=$(gcloud run services list --format="value(status.address.url)" --filter="metadata.name=daisy-agent-service")
-```
-
-```sh
-curl -X GET -H "Authorization: Bearer $TOKEN" $APP_URL/list-apps
-```
-
-```sh
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-    $APP_URL/apps/daisy/users/user_123/sessions/session_abc \
-    -H "Content-Type: application/json" \
-    -d '{"state": {"preferred_language": "English", "visit_count": 5}}'
-```
-
-```shell
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-    $APP_URL/run_sse \
-    -H "Content-Type: application/json" \
-    -d '{
-    "app_name": "daisy",
-    "user_id": "user_123",
-    "session_id": "session_abc",
-    "new_message": {
-        "role": "user",
-        "parts": [{
-        "text": "How can I water my roses?"
-        }]
-    },
-    "streaming": false
-    }'
-```
-
-<walkthrough-project-id/>
-
-## Second step
-
-```shell
-cat <<EOF > Dockerfile
-FROM ollama/ollama:latest
-
-ENV OLLAMA_HOST 0.0.0.0:8080
-ENV OLLAMA_MODELS /models
-ENV OLLAMA_DEBUG false
-ENV OLLAMA_KEEP_ALIVE -1
-ENV MODEL gemma3:4b
-# stores the model weights in the image
-RUN ollama serve & sleep 5 && ollama pull $MODEL
-
-# Start Ollama
-ENTRYPOINT ["ollama", "serve"]
-EOF
-```
-
-```sh
-gcloud run deploy ollama-gemma \
-  --project=<walkthrough-project-id/>  \
-  --region=us-central1 \
-  --source=. \
-  --concurrency=4 \
-  --cpu=8 \
-  --set-env-vars=OLLAMA_NUM_PARALLEL=4 \
-  --gpu=1 \
-  --gpu-type=nvidia-l4 \
-  --max-instances=1 \
-  --memory=32Gi \
-  --no-allow-unauthenticated \
-  --no-cpu-throttling \
-  --no-gpu-zonal-redundancy \
-  --timeout=600
-```
-
-```sh
-gcloud run services proxy ollama-gemma --port=9090
-```
-
-## Third step
-
-## Conclusion
-
-Done!
