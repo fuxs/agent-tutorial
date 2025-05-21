@@ -40,12 +40,6 @@ install `uv` to your Cloud Shell instance.
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Activate the `uv` command with the following command.
-
-```sh
-source $HOME/.local/bin/env
-```
-
 Run `uv sync` to install all required packages. These are the following:
 
 * google-adk
