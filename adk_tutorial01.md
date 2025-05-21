@@ -318,6 +318,9 @@ The folder contains 2 other files, no changes are required:
 * <walkthrough-editor-open-file filePath="mcp_server/Procfile">mcp_server/Procfile</walkthrough-editor-open-file> used by Cloud Run to run the web server
 * <walkthrough-editor-open-file filePath="mcp_server/requirements.txt">mcp_server/requirements.txt</walkthrough-editor-open-file> the Python dependencies
 
+
+## Deploy the MCP server to Cloud Run
+
 You use Cloud Run to serve your new MCP service.
 
 ```sh
@@ -326,7 +329,7 @@ gcloud run deploy mcp-server \
 --source mcp_server \
 --region us-central1 \
 --base-image python312 \
---allow-unauthenticated
+--no-allow-unauthenticated
 ```
 
 It takes some time to build and deploy the container image.
@@ -345,14 +348,26 @@ Copy the following code to <walkthrough-editor-open-file filePath="calc_agent/ag
 ```python
 from google.adk.agents import Agent
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, SseServerParams
+from google.auth.transport import requests
+from google.auth import compute_engine
 
 # replace this namespace with yours
-NAMESPACE="000000000000"
+NAMESPACE = "000000000000"
+
 
 async def create_agent():
+    url = f"https://mcp-server-{NAMESPACE}.us-central1.run.app/sse"
+
+    auth_req = requests.Request()
+    credentials = compute_engine.IDTokenCredentials(
+        request=auth_req, target_audience=url, use_metadata_identity_endpoint=True
+    )
+    credentials.refresh(auth_req)
+
     tools, exit_stack = await MCPToolset.from_server(
         connection_params=SseServerParams(
-            url=f"https://mcp-server-{NAMESPACE}.us-central1.run.app/sse",
+            url=url,
+            headers={"Authorization": f"Bearer {credentials.token}"},
         ),
     )
     agent = Agent(
