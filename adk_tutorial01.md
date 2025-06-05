@@ -4,20 +4,26 @@
 
 <walkthrough-project-setup></walkthrough-project-setup>
 
-### Open the code in the Editor
-
 Execute the following command in your Cloud Shell
-<walkthrough-cloud-shell-icon></walkthrough-cloud-shell-icon> to open the code
-in the editor:
+<walkthrough-cloud-shell-icon></walkthrough-cloud-shell-icon> to set the project
+for following commands.
 
 ```sh
-cloudshell ws .
+gcloud config set project <walkthrough-project-name/>
 ```
 
 __Tip__: Click the copy button on the side of the code box to paste the command
 in the Cloud Shell terminal to run it.
 
-### Activate APIs
+### Open the code in the Editor
+
+Run the next command to open the code in the editor:
+
+```sh
+cloudshell ws .
+```
+
+## Activate APIs
 
 You have to activate some APIs once, before you can run our examples.
 
@@ -346,41 +352,33 @@ Create a new agent directory structure with the following command:
 Copy the following code to <walkthrough-editor-open-file filePath="calc_agent/agent.py">calc_agent/agent.py</walkthrough-editor-open-file>.
 
 ```python
-from google.adk.agents import Agent
+from google.adk.agents import LlmAgent
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, SseServerParams
 from google.auth.transport import requests
 from google.auth import compute_engine
 
 # replace this namespace with yours
 NAMESPACE = "000000000000"
+URL = f"https://mcp-server-{NAMESPACE}.us-central1.run.app/sse"
 
+auth_req = requests.Request()
+credentials = compute_engine.IDTokenCredentials(
+    request=auth_req, target_audience=URL, use_metadata_identity_endpoint=True
+)
+credentials.refresh(auth_req)
 
-async def create_agent():
-    url = f"https://mcp-server-{NAMESPACE}.us-central1.run.app/sse"
-
-    auth_req = requests.Request()
-    credentials = compute_engine.IDTokenCredentials(
-        request=auth_req, target_audience=url, use_metadata_identity_endpoint=True
-    )
-    credentials.refresh(auth_req)
-
-    tools, exit_stack = await MCPToolset.from_server(
+root_agent = LlmAgent(
+    name="calc_agent",
+    model="gemini-2.0-flash",
+    instruction="""You are a helpful AI assistant designed
+        to provide accurate and useful information.""",
+    tools=[MCPToolset(
         connection_params=SseServerParams(
-            url=url,
+            url=URL,
             headers={"Authorization": f"Bearer {credentials.token}"},
-        ),
-    )
-    agent = Agent(
-        name="calc_agent",
-        model="gemini-2.0-flash",
-        instruction="""You are a helpful AI assistant designed
-          to provide accurate and useful information.""",
-        tools=tools,
-    )
-    return agent, exit_stack
-
-
-root_agent = create_agent()
+        )
+    )],
+)
 
 ```
 
