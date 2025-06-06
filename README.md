@@ -8,9 +8,9 @@ in the tutorial on the right hand side.
 
 ## Useful links
 
-* <a target="_blank" href="https://google.github.io/adk-docs/">Agent Development Kit documentation</a>
-* <a target="_blank" href="https://shell.cloud.google.com/?show=ide%2Cterminal">Cloud Shell in new tab</a>
-* <a target="_blank" href="https://console.cloud.google.com/welcome">Cloud Console in new tab</a>
+* [Agent Development Kit documentation](https://google.github.io/adk-docs/)
+* [Cloud Shell]("https://shell.cloud.google.com/?show=ide%2Cterminal)
+* [Cloud Console](https://console.cloud.google.com/welcome)
 
 ## Troubleshooting
 
