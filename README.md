@@ -9,7 +9,7 @@ in the tutorial on the right hand side.
 ## Useful links
 
 * [Agent Development Kit documentation](https://google.github.io/adk-docs/)
-* [Cloud Shell]("https://shell.cloud.google.com/?show=ide%2Cterminal)
+* [Cloud Shell](https://shell.cloud.google.com/?show=ide%2Cterminal)
 * [Cloud Console](https://console.cloud.google.com/welcome)
 
 ## Troubleshooting
